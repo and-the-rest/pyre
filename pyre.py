@@ -13,8 +13,15 @@ class Fire(object):
   def __init__(self, speed):
     self.speed = speed
     self.screen = curses.initscr()
-    curses.curs_set(0)
     self.screen.clear()
+
+    curses.curs_set(0)
+    curses.start_color()
+    curses.init_pair(1,curses.COLOR_BLACK,0)
+    curses.init_pair(2,curses.COLOR_YELLOW,0)
+    curses.init_pair(3,curses.COLOR_RED,0)
+    curses.init_pair(4,curses.COLOR_WHITE,0)
+
     self.resize()
 
   def resize(self):
@@ -30,7 +37,12 @@ class Fire(object):
             (j < self.width - 2 and j > 0 and b_prev[j] == 'X' and b_prev[j + 1] == 'X' and b_prev[j - 1] == 'X' and (self.height - i) < random.randint(self.height//4, self.height))
           )
           else ' ' for j in range(self.width - 1)]
-      self.screen.addstr(i, 0, ''.join(b))
+      b_color = [ (j < self.width - 2 and b_prev[j+1] == 'X' and random.randint(0,1)) + 
+                  (j > 0 and b_prev[j - 1] == 'X') +
+                  (b_prev[j] == 'X') +
+                  (random.randint(0,1)) for j in range(self.width - 1)]
+      for j in range(0, self.width - 1):
+        self.screen.addch(i, j, ord(b[j]), curses.color_pair(b_color[j]) | curses.A_BOLD)
       b_prev = b
     self.screen.refresh()
     self.screen.timeout(50)

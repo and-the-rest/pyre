@@ -16,6 +16,10 @@ except ImportError:
   pyaudio_available = False
 
 class Fire(object):
+  MAX_INTENSITY = 100
+  NUM_PARTICLES = 5
+  NUM_COLORS = 4
+
   def __init__(self, speed):
     self.speed = speed
     self.screen = curses.initscr()
@@ -27,6 +31,10 @@ class Fire(object):
     curses.init_pair(2,curses.COLOR_YELLOW,curses.COLOR_RED)
     curses.init_pair(3,curses.COLOR_RED,curses.COLOR_RED)
     curses.init_pair(4,curses.COLOR_WHITE,curses.COLOR_RED)
+
+    self.heat = [curses.color_pair(i) for i in range(1,5)]
+    self.particles = [' ', '.', '*', '#', '@']
+    assert(len(self.particles) == self.NUM_PARTICLES)
 
     self.resize()
     if pyaudio_available:
@@ -64,24 +72,26 @@ class Fire(object):
 
   def resize(self):
     self.height, self.width = self.screen.getmaxyx()[:2]
+    self.prev_fire = [[0 for i in range(self.width - 1)] if j > 0 else [self.MAX_INTENSITY for i in range(self.width - 1)] for j in range(self.height - 1)]
     self.redraw()
 
+  # Returns the intensity of the cell in the previous iteration
+  def intensity(self, i, j):
+    if (i < 0): return random.randint(self.MAX_INTENSITY//2, self.MAX_INTENSITY)
+    if (j < 0): return 0
+    if (j >= self.width - 1): return 0
+    return min(self.prev_fire[i][j], self.MAX_INTENSITY)
+
   def redraw(self):
-    b_prev = ['X' for i in range(self.width - 0)]
-    for i in range(self.height - 1, 0, -1):
-      b = ['X' if (
-            ((self.height - i) < random.randint(0, self.height))
-            or
-            (j < self.width - 2 and j > 0 and b_prev[j] == 'X' and b_prev[j + 1] == 'X' and b_prev[j - 1] == 'X' and (self.height - i) < random.randint(self.height//4, self.height))
-          )
-          else ' ' for j in range(self.width - 1)]
-      b_color = [(((j < self.width - 2) and (b_prev[j+1] == 'X') and random.randint(0,1)) + 
-                  ((j > 0) and (b_prev[j - 1] == 'X') and random.randint(0,1)) +
-                  ((b_prev[j] == 'X') and random.randint(0,1)) +
-                  (random.randint(0,1)) + 1) * (b[j] == 'X') for j in range(self.width - 1)]
-      for j in range(0, self.width - 1):
-        self.screen.addch(i, j, ord(b[j]), curses.color_pair(b_color[j]) | curses.A_BOLD)
-      b_prev = b
+    for i in range(self.height - 1):
+      for j in range(self.width - 1):
+        curr = self.intensity(i - 1, j) + self.intensity(i - 1, j + 1) + self.intensity(i - 1, j - 1)
+        curr = random.randint(curr // 2, curr) / ((i + 1) **.4)
+        particle_index = int(curr / self.MAX_INTENSITY * self.NUM_PARTICLES / 3)
+        color_index = int(curr / self.MAX_INTENSITY * self.NUM_COLORS / 3) + 1
+        self.screen.addch(self.height - i - 1, j, self.particles[particle_index],
+                          curses.color_pair(color_index)|curses.A_BOLD)
+        self.prev_fire[i][j] = int(curr)
     self.screen.refresh()
     self.screen.timeout(50)
     time.sleep(1 / self.speed)

@@ -86,7 +86,7 @@ class Fire(object):
     self.screen.timeout(50)
     time.sleep(1 / self.speed)
 
-def main():
+if __name__ == "__main__":
   speed = 20
   if len(sys.argv) >= 2:
     speed = int(sys.argv[1])
@@ -101,5 +101,3 @@ def main():
   signal.signal(signal.SIGINT, signal_handler)
 
   while 1: fire.redraw()
-
-main()

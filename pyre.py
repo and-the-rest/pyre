@@ -86,7 +86,7 @@ class Fire(object):
     for i in range(self.height - 1):
       for j in range(self.width - 1):
         curr = self.intensity(i - 1, j) + self.intensity(i - 1, j + 1) + self.intensity(i - 1, j - 1)
-        curr = random.randint(curr // 2, curr) / ((i + 1) **.4)
+        curr = random.randint(curr // 2, curr) / ((i + 1) ** 0.3)
         particle_index = int(curr / self.MAX_INTENSITY * self.NUM_PARTICLES / 3)
         color_index = int(curr / self.MAX_INTENSITY * self.NUM_COLORS / 3) + 1
         self.screen.addch(self.height - i - 1, j, self.particles[particle_index],

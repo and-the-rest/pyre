@@ -1,5 +1,5 @@
 # pyre
-TUI Fire in Python
+TUI Fire in Python.  If you have PyAudio, it uses sound.
 
 ## Usage
 

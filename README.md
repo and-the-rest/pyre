@@ -5,4 +5,4 @@ TUI Fire in Python
 
 For a fire with a refresh rate of 10Hz:
 
-    ./fire.py 10
+    ./pyre.py 10

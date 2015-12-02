@@ -33,7 +33,7 @@ class Fire(object):
     curses.init_pair(4,curses.COLOR_WHITE,curses.COLOR_RED)
 
     self.heat = [curses.color_pair(i) for i in range(1,5)]
-    self.particles = [' ', '.', '*', '#', '@']
+    self.particles = [ord(i) for i in (' ', '.', '*', '#', '@')]
     assert(len(self.particles) == self.NUM_PARTICLES)
 
     self.resize()

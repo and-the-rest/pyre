@@ -38,7 +38,7 @@ class Fire(object):
     #curses.init_pair(4,curses.COLOR_WHITE,curses.COLOR_RED)
 
     def color(r, g, b):
-      return (16+r/48*36+g/48*6+b/48)
+      return (16+r//48*36+g//48*6+b//48)
     self.heat = [color(16 * i,0,0) for i in range(0,16)] + [color(255,16 * i,0) for i in range(0,16)]
     self.particles = [ord(i) for i in (' ', '.', '*', '#', '@')]
     assert(len(self.particles) == self.NUM_PARTICLES)

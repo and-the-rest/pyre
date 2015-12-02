@@ -4,6 +4,7 @@ import signal
 import sys
 import curses
 import time
+import getopt
 
 # Audio support
 pyaudio_available = False
@@ -18,21 +19,27 @@ except ImportError:
 class Fire(object):
   MAX_INTENSITY = 100
   NUM_PARTICLES = 5
-  NUM_COLORS = 4
+  NUM_COLORS = 30
 
-  def __init__(self, speed):
-    self.speed = speed
+  def __init__(self, settings):
+    self.speed = int(settings['-r']) if '-r' in settings else 20
+    self.scale = float(settings['-s']) if '-s' in settings else 1.0
     self.screen = curses.initscr()
     self.screen.clear()
 
     curses.curs_set(0)
     curses.start_color()
-    curses.init_pair(1,curses.COLOR_YELLOW,0)
-    curses.init_pair(2,curses.COLOR_YELLOW,curses.COLOR_RED)
-    curses.init_pair(3,curses.COLOR_RED,curses.COLOR_RED)
-    curses.init_pair(4,curses.COLOR_WHITE,curses.COLOR_RED)
+    curses.use_default_colors()
+    for i in range(0, curses.COLORS):
+      curses.init_pair(i, i, -1)
+    #curses.init_pair(1,curses.COLOR_YELLOW,0)
+    #curses.init_pair(2,curses.COLOR_YELLOW,curses.COLOR_RED)
+    #curses.init_pair(3,curses.COLOR_RED,curses.COLOR_RED)
+    #curses.init_pair(4,curses.COLOR_WHITE,curses.COLOR_RED)
 
-    self.heat = [curses.color_pair(i) for i in range(1,5)]
+    def color(r, g, b):
+      return (16+r/48*36+g/48*6+b/48)
+    self.heat = [color(16 * i,0,0) for i in range(0,16)] + [color(255,16 * i,0) for i in range(0,16)]
     self.particles = [ord(i) for i in (' ', '.', '*', '#', '@')]
     assert(len(self.particles) == self.NUM_PARTICLES)
 
@@ -82,25 +89,43 @@ class Fire(object):
     if (j >= self.width - 1): return 0
     return min(self.prev_fire[i][j], self.MAX_INTENSITY)
 
+  # The intensity is calculated by considering the row preceding
+  # the current one in the previous time step.
+  def get_intensity(self, i, j):
+    prev_intensity = self.intensity(i - 1, j) + self.intensity(i - 1, j + 1) + self.intensity(i - 1, j - 1)
+    new_intensity = random.randint(prev_intensity // 2, prev_intensity) / ((i + 1) ** 0.3) * self.scale
+    return min(int(new_intensity), self.MAX_INTENSITY)
+
+  def get_particle(self, intensity):
+    index = int(intensity * self.NUM_PARTICLES / self.MAX_INTENSITY)
+    index = min(index, self.NUM_PARTICLES - 1)
+    return self.particles[index]
+
+
+  def get_color(self, intensity):
+    index = int(intensity * self.NUM_COLORS / self.MAX_INTENSITY)
+    index = min(index, self.NUM_COLORS - 1)
+    return curses.color_pair(self.heat[index])
+
   def redraw(self):
     for i in range(self.height - 1):
       for j in range(self.width - 1):
-        curr = self.intensity(i - 1, j) + self.intensity(i - 1, j + 1) + self.intensity(i - 1, j - 1)
-        curr = random.randint(curr // 2, curr) / ((i + 1) ** 0.3)
-        particle_index = int(curr / self.MAX_INTENSITY * self.NUM_PARTICLES / 3)
-        color_index = int(curr / self.MAX_INTENSITY * self.NUM_COLORS / 3) + 1
-        self.screen.addch(self.height - i - 1, j, self.particles[particle_index],
-                          curses.color_pair(color_index)|curses.A_BOLD)
-        self.prev_fire[i][j] = int(curr)
+        # Figure out what to draw
+        intensity = self.get_intensity(i, j)
+        particle = self.get_particle(intensity)
+        color = self.get_color(intensity)
+        # Where to draw it
+        x, y = j, self.height - i - 1
+        self.screen.addch(y, x, particle, color)
+        # Save for the next iteration
+        self.prev_fire[i][j] = int(intensity)
     self.screen.refresh()
     self.screen.timeout(50)
     time.sleep(1.0 / self.speed)
 
 if __name__ == "__main__":
-  speed = 20
-  if len(sys.argv) >= 2:
-    speed = int(sys.argv[1])
-  fire = Fire(speed)
+  optlist, args = getopt.getopt(sys.argv[1:], 's:r:')
+  fire = Fire(dict(optlist))
 
   def signal_handler(signal, frame):
     curses.endwin()

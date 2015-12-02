@@ -94,7 +94,7 @@ class Fire(object):
         self.prev_fire[i][j] = int(curr)
     self.screen.refresh()
     self.screen.timeout(50)
-    time.sleep(1 / self.speed)
+    time.sleep(1.0 / self.speed)
 
 if __name__ == "__main__":
   speed = 20

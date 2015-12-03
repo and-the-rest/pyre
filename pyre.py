@@ -25,6 +25,9 @@ class Fire(object):
     self.speed = int(settings['-r']) if '-r' in settings else 20
     self.scale = float(settings['-s']) if '-s' in settings else 1.0
     self.screen = curses.initscr()
+    self.START_INTENSITY = int(settings['-i']) if '-i' in settings else self.MAX_INTENSITY
+    self.START_OFFSET = int(settings['-w']) if '-w' in settings else 0
+    self.START_HEIGHT = int(settings['-h']) if '-h' in settings else 0
     self.screen.clear()
 
     curses.curs_set(0)
@@ -32,10 +35,6 @@ class Fire(object):
     curses.use_default_colors()
     for i in range(0, curses.COLORS):
       curses.init_pair(i, i, -1)
-    #curses.init_pair(1,curses.COLOR_YELLOW,0)
-    #curses.init_pair(2,curses.COLOR_YELLOW,curses.COLOR_RED)
-    #curses.init_pair(3,curses.COLOR_RED,curses.COLOR_RED)
-    #curses.init_pair(4,curses.COLOR_WHITE,curses.COLOR_RED)
 
     def color(r, g, b):
       return (16+r//48*36+g//48*6+b//48)
@@ -48,7 +47,7 @@ class Fire(object):
       self.loop = True
       self.lock = threading.Lock()
       t = threading.Thread(target=self.play_fire)
-      t.start()
+      #t.start()
 
   def play_fire(self):
     CHUNK = 1024
@@ -79,12 +78,16 @@ class Fire(object):
 
   def resize(self):
     self.height, self.width = self.screen.getmaxyx()[:2]
-    self.prev_fire = [[0 for i in range(self.width - 1)] if j > 0 else [self.MAX_INTENSITY for i in range(self.width - 1)] for j in range(self.height - 1)]
-    self.redraw()
+    self.prev_fire = [[0 for i in range(self.width - 1)] for j in range(self.height-1)]
 
   # Returns the intensity of the cell in the previous iteration
   def intensity(self, i, j):
-    if (i < 0): return random.randint(self.MAX_INTENSITY//2, self.MAX_INTENSITY)
+    if (i < self.START_HEIGHT - 1): return 0
+    if (i == self.START_HEIGHT - 1):
+      if (self.START_OFFSET > j) or (self.width - self.START_OFFSET < j):
+        return 0
+      else:
+        return self.START_INTENSITY
     if (j < 0): return 0
     if (j >= self.width - 1): return 0
     return min(self.prev_fire[i][j], self.MAX_INTENSITY)
@@ -93,7 +96,8 @@ class Fire(object):
   # the current one in the previous time step.
   def get_intensity(self, i, j):
     prev_intensity = self.intensity(i - 1, j) + self.intensity(i - 1, j + 1) + self.intensity(i - 1, j - 1)
-    new_intensity = random.randint(prev_intensity // 2, prev_intensity) / ((i + 1) ** 0.3) * self.scale
+    fade = (i - self.START_HEIGHT + 1) ** 0.3 if i >= self.START_HEIGHT else 1
+    new_intensity = random.randint(prev_intensity // 2, prev_intensity) / fade * self.scale
     return min(int(new_intensity), self.MAX_INTENSITY)
 
   def get_particle(self, intensity):
@@ -124,7 +128,7 @@ class Fire(object):
     time.sleep(1.0 / self.speed)
 
 if __name__ == "__main__":
-  optlist, args = getopt.getopt(sys.argv[1:], 's:r:')
+  optlist, args = getopt.getopt(sys.argv[1:], 's:r:i:w:h:')
   fire = Fire(dict(optlist))
 
   def signal_handler(signal, frame):

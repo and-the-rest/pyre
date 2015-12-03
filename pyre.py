@@ -47,7 +47,7 @@ class Fire(object):
       self.loop = True
       self.lock = threading.Lock()
       t = threading.Thread(target=self.play_fire)
-      #t.start()
+      t.start()
 
   def play_fire(self):
     CHUNK = 1024

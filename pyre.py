@@ -1,6 +1,5 @@
 #!/usr/bin/python
 import random
-import signal
 import sys
 import curses
 import time
@@ -9,9 +8,8 @@ import getopt
 # Audio support
 pyaudio_available = False
 try:
-  import pyaudio
-  import wave
-  import threading
+  from pygame import mixer
+  from pygame.mixer import music
   pyaudio_available = True
 except ImportError:
   pyaudio_available = False
@@ -29,6 +27,12 @@ class Fire(object):
     self.START_OFFSET = int(settings['-w']) if '-w' in settings else 0
     self.START_HEIGHT = int(settings['-h']) if '-h' in settings else 0
     self.screen.clear()
+    self.screen.nodelay(1)
+    if pyaudio_available:
+      mixer.init()
+      music.load('fire.wav')
+      music.play(-1)
+    self.volume = 1.0
 
     curses.curs_set(0)
     curses.start_color()
@@ -43,41 +47,9 @@ class Fire(object):
     assert(len(self.particles) == self.NUM_PARTICLES)
 
     self.resize()
-    if pyaudio_available:
-      self.loop = True
-      self.lock = threading.Lock()
-      t = threading.Thread(target=self.play_fire)
-      t.start()
-
-  def play_fire(self):
-    CHUNK = 1024
-    p = pyaudio.PyAudio()
-    wf = wave.open('fire.wav', 'rb')
-    stream = p.open(format=p.get_format_from_width(wf.getsampwidth()),
-              channels=wf.getnchannels(),
-              rate=wf.getframerate(),
-              output=True)
-    loop = True
-    while loop:
-      self.lock.acquire()
-      loop = self.loop
-      self.lock.release()
-      data = wf.readframes(CHUNK)
-      if (len(data) == 0): wf.rewind()
-      if (len(data) < 0): break
-      stream.write(data)
-    stream.stop_stream()
-    stream.close()
-    p.terminate()
-
-  def shutdown(self):
-    if pyaudio_available:
-      self.lock.acquire()
-      self.loop = False
-      self.lock.release()
 
   def resize(self):
-    self.height, self.width = self.screen.getmaxyx()[:2]
+    self.height, self.width = self.screen.getmaxyx()#[:2]
     self.prev_fire = [[0 for i in range(self.width - 1)] for j in range(self.height-1)]
 
   # Returns the intensity of the cell in the previous iteration
@@ -105,7 +77,6 @@ class Fire(object):
     index = min(index, self.NUM_PARTICLES - 1)
     return self.particles[index]
 
-
   def get_color(self, intensity):
     index = int(intensity * self.NUM_COLORS / self.MAX_INTENSITY)
     index = min(index, self.NUM_COLORS - 1)
@@ -121,8 +92,17 @@ class Fire(object):
         # Where to draw it
         x, y = j, self.height - i - 1
         self.screen.addch(y, x, particle, color)
-        # Save for the next iteration
         self.prev_fire[i][j] = int(intensity)
+        # Save for the next iteration
+    if pyaudio_available:
+      ch = self.screen.getch()
+      if ch != curses.ERR:
+        if ch == ord('-') and self.volume != 0.0:
+          self.volume = self.volume - .10
+          music.set_volume(self.volume)
+        elif ch == ord('+') and self.volume != 1.0:
+          self.volume = self.volume + .10
+          music.set_volume(self.volume)
     self.screen.refresh()
     self.screen.timeout(50)
     time.sleep(1.0 / self.speed)
@@ -131,12 +111,12 @@ if __name__ == "__main__":
   optlist, args = getopt.getopt(sys.argv[1:], 's:r:i:w:h:')
   fire = Fire(dict(optlist))
 
-  def signal_handler(signal, frame):
+  try:
+    while 1: 
+      fire.redraw()
+  except KeyboardInterrupt:
     curses.endwin()
-    if fire:
-      fire.shutdown()
     sys.exit(0)
-
-  signal.signal(signal.SIGINT, signal_handler)
-
-  while 1: fire.redraw()
+  except:
+    curses.endwin()
+    sys.exit(1)

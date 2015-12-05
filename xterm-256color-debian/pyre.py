@@ -1,5 +1,7 @@
 #!/usr/bin/python
 import random
+#import queue
+import struct
 import signal
 import sys
 import curses
@@ -12,6 +14,8 @@ try:
   import pyaudio
   import wave
   import threading
+  from pygame import mixer
+  from pygame.mixer import music
   pyaudio_available = True
 except ImportError:
   pyaudio_available = False
@@ -30,6 +34,11 @@ class Fire(object):
     self.START_OFFSET = int(settings['-w']) if '-w' in settings else 0
     self.START_HEIGHT = int(settings['-h']) if '-h' in settings else 0
     self.screen.clear()
+    self.screen.nodelay(1)
+    mixer.init()
+    music.load('fire.wav')
+    music.play(-1)
+    self.volume = 1.0
 
     curses.curs_set(0)
     curses.start_color()
@@ -44,32 +53,6 @@ class Fire(object):
     assert(len(self.particles) == self.NUM_PARTICLES)
 
     self.resize()
-    if pyaudio_available:
-      self.loop = True
-      self.lock = threading.Lock()
-      t = threading.Thread(target=self.play_fire)
-      t.start()
-
-  def play_fire(self):
-    CHUNK = 1024
-    p = pyaudio.PyAudio()
-    wf = wave.open('fire.wav', 'rb')
-    stream = p.open(format=p.get_format_from_width(wf.getsampwidth()),
-              channels=wf.getnchannels(),
-              rate=wf.getframerate(),
-              output=True)
-    loop = True
-    while loop:
-      self.lock.acquire()
-      loop = self.loop
-      self.lock.release()
-      data = wf.readframes(CHUNK)
-      if (len(data) == 0): wf.rewind()
-      if (len(data) < 0): break
-      stream.write(data)
-    stream.stop_stream()
-    stream.close()
-    p.terminate()
 
   def shutdown(self):
     if pyaudio_available:
@@ -124,6 +107,14 @@ class Fire(object):
         self.screen.addch(y, j, particle, color)
         # Save for the next iteration
         self.prev_fire[i][j] = int(intensity)
+    ch = self.screen.getch()
+    if ch != curses.ERR:
+      if ch == ord('-') and self.volume != 0.0:
+        self.volume = self.volume - .10
+        music.set_volume(self.volume)
+      elif ch == ord('+') and self.volume != 1.0:
+        self.volume = self.volume + .10
+        music.set_volume(self.volume)
     self.screen.refresh()
     self.screen.timeout(50)
     time.sleep(1.0 / self.speed)
@@ -148,4 +139,4 @@ if __name__ == "__main__":
     sys.exit(0)
   except:
     curses.endwin()
-    sys.exit(0)
+    sys.exit(1)

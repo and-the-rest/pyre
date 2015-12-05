@@ -1,5 +1,6 @@
 # pyre
-TUI Fire in Python.  If you have PyAudio, it uses sound.
+TUI Fire in Python.  If you have PyGame, it uses sound.
+If you are using a Mac and can't get PyGame, use the pyre.py in the MacOS directory to get sound with PyAudio.
 
 ## Usage
 

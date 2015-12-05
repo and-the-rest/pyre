@@ -36,7 +36,7 @@ class Fire(object):
     self.screen.clear()
     self.screen.nodelay(1)
     mixer.init()
-    music.load('fire.wav')
+    music.load('../fire.wav')
     music.play(-1)
     self.volume = 1.0
 

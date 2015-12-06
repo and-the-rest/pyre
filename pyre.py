@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import random
+import signal
 import sys
 import curses
 import time
@@ -7,12 +8,20 @@ import getopt
 
 # Audio support
 pyaudio_available = False
+pygame_available = False
 try:
   from pygame import mixer
   from pygame.mixer import music
-  pyaudio_available = True
+  pygame_available = True
 except ImportError:
-  pyaudio_available = False
+  pygame_available = False
+  try:
+    import pyaudio
+    import wave
+    import threading
+    pyaudio_available = True
+  except ImportError:
+    pyaudio_available = False
 
 class Fire(object):
   MAX_INTENSITY = 100
@@ -28,11 +37,6 @@ class Fire(object):
     self.START_HEIGHT = int(settings['-h']) if '-h' in settings else 0
     self.screen.clear()
     self.screen.nodelay(1)
-    if pyaudio_available:
-      mixer.init()
-      music.load('fire.wav')
-      music.play(-1)
-    self.volume = 1.0
 
     curses.curs_set(0)
     curses.start_color()
@@ -47,6 +51,42 @@ class Fire(object):
     assert(len(self.particles) == self.NUM_PARTICLES)
 
     self.resize()
+    self.volume = 1.0
+    if pygame_available:
+      mixer.init()
+      music.load('fire.wav')
+      music.play(-1)
+    elif not pygame_avaiable and pyaudio_available:
+      self.loop = True
+      self.lock = threading.Lock()
+      t = threading.Thread(target=self.play_fire)
+
+  def play_fire(self):
+    CHUNK = 1024
+    p = pyaudio.PyAudio()
+    wf = wave.open('fire.wav', 'rb')
+    stream = p.open(format=p.get_format_from_width(wf.getsampwidth()),
+              channels=wf.getnchannels(),
+              rate=wf.getframerate(),
+              output=True)
+    loop = True
+    while loop:
+      self.lock.acquire()
+      loop = self.loop
+      self.lock.release()
+      data = wf.readframes(CHUNK)
+      if (len(data) == 0): wf.rewind()
+      if (len(data) < 0): break
+      stream.write(data)
+    stream.stop_stream()
+    stream.close()
+    p.terminate()
+
+  def shutdown(self):
+    if pyaudio_available:
+      self.lock.acquire()
+      self.loop = False
+      self.lock.release()
 
   def resize(self):
     self.height, self.width = self.screen.getmaxyx()#[:2]
@@ -94,7 +134,7 @@ class Fire(object):
         self.screen.addch(y, x, particle, color)
         self.prev_fire[i][j] = int(intensity)
         # Save for the next iteration
-    if pyaudio_available:
+    if pygame_available:
       ch = self.screen.getch()
       if ch != curses.ERR:
         if ch == ord('-') and self.volume != 0.0:
@@ -110,6 +150,14 @@ class Fire(object):
 if __name__ == "__main__":
   optlist, args = getopt.getopt(sys.argv[1:], 's:r:i:w:h:')
   fire = Fire(dict(optlist))
+
+  def signal_handler(signal, frame):
+    curses.endwin()
+    if fire:
+      fire.shutdown()
+    sys.exit(0)
+
+  signal.signal(signal.SIGINT, signal_handler)
 
   try:
     while 1: 

@@ -140,7 +140,7 @@ class Fire(object):
         if ch == ord('-') and self.volume != 0.0:
           self.volume = self.volume - .10
           music.set_volume(self.volume)
-        elif ch == ord('+') and self.volume != 1.0:
+        elif ch == ord('+') or ch == ord('=') and self.volume != 1.0:
           self.volume = self.volume + .10
           music.set_volume(self.volume)
     self.screen.refresh()

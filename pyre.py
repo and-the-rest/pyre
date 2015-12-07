@@ -1,6 +1,5 @@
 #!/usr/bin/python
 import random
-import signal
 import sys
 import curses
 import time

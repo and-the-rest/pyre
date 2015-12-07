@@ -56,10 +56,11 @@ class Fire(object):
       mixer.init()
       music.load('fire.wav')
       music.play(-1)
-    elif not pygame_avaiable and pyaudio_available:
+    elif pygame_available == False and pyaudio_available:
       self.loop = True
       self.lock = threading.Lock()
       t = threading.Thread(target=self.play_fire)
+      t.start()
 
   def play_fire(self):
     CHUNK = 1024
@@ -83,13 +84,13 @@ class Fire(object):
     p.terminate()
 
   def shutdown(self):
-    if pyaudio_available:
+    if pyaudio_available and pygame_available == False:
       self.lock.acquire()
       self.loop = False
       self.lock.release()
 
   def resize(self):
-    self.height, self.width = self.screen.getmaxyx()#[:2]
+    self.height, self.width = self.screen.getmaxyx()[:2]
     self.prev_fire = [[0 for i in range(self.width - 1)] for j in range(self.height-1)]
 
   # Returns the intensity of the cell in the previous iteration
@@ -150,21 +151,16 @@ class Fire(object):
 if __name__ == "__main__":
   optlist, args = getopt.getopt(sys.argv[1:], 's:r:i:w:h:')
   fire = Fire(dict(optlist))
-
-  def signal_handler(signal, frame):
-    curses.endwin()
-    if fire:
-      fire.shutdown()
-    sys.exit(0)
-
-  signal.signal(signal.SIGINT, signal_handler)
-
   try:
     while 1: 
       fire.redraw()
   except KeyboardInterrupt:
+    if fire:
+      fire.shutdown()
     curses.endwin()
     sys.exit(0)
   except:
+    if fire:
+      fire.shutdown()
     curses.endwin()
     sys.exit(1)

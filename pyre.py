@@ -55,7 +55,7 @@ class Fire(object):
       mixer.init()
       music.load('fire.wav')
       music.play(-1)
-    elif pygame_available == False and pyaudio_available:
+    elif pyaudio_available:
       self.loop = True
       self.lock = threading.Lock()
       t = threading.Thread(target=self.play_fire)
@@ -83,7 +83,7 @@ class Fire(object):
     p.terminate()
 
   def shutdown(self):
-    if pyaudio_available and pygame_available == False:
+    if pyaudio_available:
       self.lock.acquire()
       self.loop = False
       self.lock.release()

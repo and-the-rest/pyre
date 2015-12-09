@@ -143,6 +143,11 @@ class Fire(object):
         elif ch == ord('+') or ch == ord('=') and self.volume != 1.0:
           self.volume = self.volume + .10
           music.set_volume(self.volume)
+        elif ch == ord('q') or ch == curses.KEY_ESCAPE:
+          if fire:
+            fire.shutdown()
+          curses.endwin()
+          sys.exit(0)
     self.screen.refresh()
     self.screen.timeout(50)
     time.sleep(1.0 / self.speed)

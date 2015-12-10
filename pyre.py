@@ -134,19 +134,27 @@ class Fire(object):
         self.screen.addch(y, x, particle, color)
         self.prev_fire[i][j] = int(intensity)
         # Save for the next iteration
-    if pygame_available:
-      ch = self.screen.getch()
-      if ch != curses.ERR:
-        if ch == ord('-') and self.volume != 0.0:
-          self.volume = self.volume - .10
-          music.set_volume(self.volume)
-        elif ch == ord('+') or ch == ord('=') and self.volume != 1.0:
-          self.volume = self.volume + .10
-          music.set_volume(self.volume)
+    ch = self.screen.getch()
+    if ch != curses.ERR:
+      if pygame_available:
+          if ch == ord('-') and self.volume != 0.0:
+            self.volume = self.volume - .10
+            music.set_volume(self.volume)
+          elif ch == ord('+') or ch == ord('=') and self.volume != 1.0:
+            self.volume = self.volume + .10
+            music.set_volume(self.volume)
+      if ch == ord('q') or ch == curses.KEY_ESCAPE:
+        end_session(0)
     self.screen.refresh()
     self.screen.timeout(50)
     time.sleep(1.0 / self.speed)
 
+  def end_session(self, exit_sig):
+    if fire:
+      fire.shutdown()
+    curses.endwin()
+    sys.exit(exit_sig)
+    
 if __name__ == "__main__":
   optlist, args = getopt.getopt(sys.argv[1:], 's:r:i:w:h:')
   fire = Fire(dict(optlist))
@@ -154,12 +162,6 @@ if __name__ == "__main__":
     while 1: 
       fire.redraw()
   except KeyboardInterrupt:
-    if fire:
-      fire.shutdown()
-    curses.endwin()
-    sys.exit(0)
+    fire.end_session(0)
   except:
-    if fire:
-      fire.shutdown()
-    curses.endwin()
-    sys.exit(1)
+    fire.end_session(1)
